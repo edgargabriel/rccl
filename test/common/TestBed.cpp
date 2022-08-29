@@ -459,7 +459,7 @@ namespace RcclUnitTesting
     // Sweep over the number of ranks
     for (int ranksPerGpu=1; ranksPerGpu <= ev.maxRanksPerGpu; ranksPerGpu++)
     for (int numGpus = ev.minGpus; numGpus <= ev.maxGpus && isCorrect; ++numGpus)
-    for (int isMultiProcess = 0; isMultiProcess <= 1 && isCorrect; ++isMultiProcess)
+    for (int isMultiProcess = 1; isMultiProcess <= 1 && isCorrect; ++isMultiProcess)
     {
       if (!(ev.processMask & (1 << isMultiProcess))) continue;
 

@@ -118,7 +118,9 @@ ncclResult_t ncclLaunchCooperativeKernelMultiDevice(hipLaunchParams *paramsList,
   for (int i = 0; i < numDevices; i++) {
     hipLaunchParams* params = paramsList+i;
     CUDACHECK(hipSetDevice(cudaDevs[i]));
+    printf("[%d] Before hipLaunchKernelGGL func=%p stream=%p device=%d\n", getpid(), params->func, (char*)params->stream, cudaDevs[i] );
     hipLaunchKernelGGL(((void (*)(struct ncclWorkElem))params->func), params->gridDim, params->blockDim, params->sharedMem, params->stream, **((struct ncclWorkElem**)params->args));
+    printf("[%d] After hipLaunchKernelGGL stream=%p", getpid(), (char*)params->stream );
   }
   CUDACHECK(hipSetDevice(savedDev));
   return ncclSuccess;
@@ -293,10 +295,24 @@ ncclResult_t ncclLaunchKernel(ncclComm_t comm) {
   if (comm->launchMode == ncclComm::GROUP) {
     NCCLCHECK(ncclCpuBarrierOut(comm));
   } else {
-    if (!comm->usingCudaGraph)
-      CUDACHECK(hipExtLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream, NULL, comm->doneEvent, 0));
-    else
-      CUDACHECK(hipLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream));
+    if (!comm->usingCudaGraph) {
+      int device;
+      hipGetDevice(&device);
+      printf("[%d] Before hipExtLaunchKernel func=%p stream=%p device=%d gridDim %d %d %d  blockDim %d %d %d\n", getpid(), params->func, (char*)params->stream,
+	     device, params->gridDim.x, params->gridDim.y, params->gridDim.z, params->blockDim.x, params->blockDim.y, params->blockDim.z );      
+      //CUDACHECK(hipExtLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream, NULL, comm->doneEvent, 0));
+      hipError_t thisret = hipExtLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream,
+					      NULL, comm->doneEvent, 0);
+      printf("[%d] After hipExtLaunchKernel ret=%d stream=%p\n", getpid(), (int)thisret, (char*)params->stream );
+    } else {
+      int device;
+      hipGetDevice(&device);
+      printf("[%d] Before hipLaunchKernel func=%p stream=%p device=%d gridDim %d %d %d  blockDim %d %d %d\n", getpid(), params->func, (char*)params->stream,
+	     device, params->gridDim.x, params->gridDim.y, params->gridDim.z, params->blockDim.x, params->blockDim.y, params->blockDim.z );
+      //CUDACHECK(hipLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream));
+      hipError_t thisret = hipLaunchKernel(params->func, params->gridDim, params->blockDim, params->args, params->sharedMem, params->stream);
+      printf("[%d] After hipLaunchKernel ret=%d stream=%p\n", getpid(), (int)thisret, (char*)params->stream );
+    }
   }
 
   return ncclSuccess;
@@ -328,7 +344,7 @@ ncclResult_t ncclRecordEvents(ncclComm_t comm) {
 
   // Enqueue event after NCCL kernel (only in non-graph mode)
   // [RCCL] move event record into hipExtLaunchKernel
-  // if (!comm->usingCudaGraph) CUDACHECK(hipEventRecord(comm->doneEvent, params->stream));
+  //if (!comm->usingCudaGraph) CUDACHECK(hipEventRecord(comm->doneEvent, params->stream));  
   // Use internal NCCL stream for CGMD/GROUP launch if required or if the user stream is NULL
   if (comm->launchMode == ncclComm::GROUP &&
       (comm->groupCudaStream ||

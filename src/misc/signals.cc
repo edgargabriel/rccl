@@ -4,6 +4,7 @@
  * See LICENSE.txt for license information
  ************************************************************************/
 
+#undef HAVE_BFD
 #ifdef HAVE_BFD
 #include "BfdBacktrace.hpp"
 #endif

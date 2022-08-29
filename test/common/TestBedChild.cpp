@@ -167,7 +167,7 @@ namespace RcclUnitTesting
         status = TEST_FAIL;
         break;
       }
-
+      printf("[%d]: Created Stream %p device %d\n", this->childId, (char*)this->streams.at(localRank), currGpu);
       if (useMultiRankPerGpu)
       {
 	if (ncclCommInitRankMulti(&this->comms[localRank], this->totalRanks, id, globalRank, globalRank) != ncclSuccess)
@@ -358,8 +358,6 @@ namespace RcclUnitTesting
       {
         // If ranks to execute is empty, execute all ranks belonging to child
         if (!ranksToExecute.empty() && (std::count(ranksToExecute.begin(), ranksToExecute.end(), localRank) == 0)) continue;
-
-        CHECK_HIP(hipSetDevice(this->deviceIds[localRank]));
 
         CollectiveArgs const& collArg = this->collArgs[localRank][collId];
 
@@ -611,7 +609,7 @@ namespace RcclUnitTesting
   ErrCode TestBedChild::DestroyComms()
   {
     if (this->verbose) INFO("Child %d begins DestroyComms\n", this->childId);
-
+    int device;
     // Release comms
     for (int i = 0; i < this->comms.size(); ++i)
     {
@@ -619,7 +617,9 @@ namespace RcclUnitTesting
     }
     for (int i = 0; i < this->streams.size(); ++i)
     {
+      hipGetDevice(&device);
       CHECK_HIP(hipStreamDestroy(this->streams[i]));
+      printf("[%d]: Destroying Stream %p device %d\n", this->childId, (char*)this->streams[i], device);
     }
     this->comms.clear();
     this->streams.clear();

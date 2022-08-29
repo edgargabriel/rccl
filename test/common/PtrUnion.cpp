@@ -1,4 +1,6 @@
 #include "PtrUnion.hpp"
+#include <sys/types.h>
+#include <unistd.h>
 
 namespace RcclUnitTesting
 {
@@ -53,6 +55,9 @@ namespace RcclUnitTesting
           ERROR("Unable to allocate memory of GPU memory (%lu bytes)\n", numBytes);
           return TEST_FAIL;
         }
+	int device;
+	hipGetDevice(&device);
+	printf("[%d] Allocated %zu bytes using hipMalloc %p device %d\n", getpid(), numBytes, I1, device);
       }
     }
     return TEST_SUCCESS;
@@ -76,6 +81,7 @@ namespace RcclUnitTesting
   {
     if (this->ptr != nullptr)
     {
+      printf("[%d] Calling hipFree on ptr %p\n", getpid(), this->ptr);
       hipFree(this->ptr);
       this->ptr = nullptr;
     }
